@@ -1,0 +1,5 @@
+---
+remotes:
+  vendor: https://github.com/mitchellh/vagrant
+  primary: git@github.com:destructuring/vagrant
+  secondary: git@bitbucket.org:destructuring/vagrant
