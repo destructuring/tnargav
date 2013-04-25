@@ -69,8 +69,6 @@ begin
     if defined?(Bundler)
       require 'bundler/shared_helpers'
       if Bundler::SharedHelpers.in_bundle?
-        env.ui.warn(I18n.t("vagrant.general.in_bundler"))
-        env.ui.warn("")
         warned = true
       end
     end
