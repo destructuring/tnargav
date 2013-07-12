@@ -167,6 +167,14 @@ en:
         available below.
 
         %{help}
+      command_unavailable: |-
+        The executable '%(file)' Vagrant is trying to run was not
+        found in the PATH variable. This is an error. Please verify
+        this software is installed and on the path.
+      command_unavailable_windows: |-
+        The executable '%(file)' Vagrant is trying to run was not
+        found in the %PATH% variable. This is an error. Please verify
+        this software is installed and on the path.
       config_invalid: |-
         There are errors in the configuration of this machine. Please fix
         the following errors and try again:
@@ -418,6 +426,10 @@ en:
         usually indicates that SSH within the guest machine was unable to
         properly start up. Please boot the VM in GUI mode to check whether
         it is booting properly.
+      ssh_no_route: |-
+        While attempting to connect with SSH, a "no route to host" (EHOSTUNREACH)
+        error was received. Please verify your network settings are correct
+        and try again.
       ssh_host_down: |-
         While attempting to connect with SSH, a "host is down" (EHOSTDOWN)
         error was received. Please verify your SSH settings are correct
@@ -528,8 +540,8 @@ en:
         %{supported_versions}
       virtualbox_kernel_module_not_loaded: |-
         VirtualBox is complaining that the kernel module is not loaded. Please
-        run `VBoxManage --version` to see the error message which should contain
-        instructions on how to fix this error.
+        run `VBoxManage --version` or open the VirtualBox GUI to see the error
+        message which should contain instructions on how to fix this error.
       virtualbox_install_incomplete: |-
         VirtualBox is complaining that the installation is incomplete. Please
         run `VBoxManage --version` to see the error message which should contain
@@ -597,8 +609,6 @@ en:
         network_invalid: |-
           The network type '%{type}' is not valid. Please use
           'hostonly' or 'bridged'.
-        network_ip_required: |-
-          Host only networks require an IP as an argument.
         network_ip_invalid: |-
           The host only network IP '%{ip}' is invalid.
         network_ip_ends_one: |-
@@ -613,6 +623,8 @@ en:
         nfs_requires_host: |-
           Using NFS shared folders requires a host to be specified
           using `config.vagrant.host`.
+        network_ip_required: |-
+          An IP is required for a private network.
         network_fp_host_not_unique: |-
           Forwarded port '%{host}' (host port) is declared multiple times
         network_fp_requires_ports: |-
