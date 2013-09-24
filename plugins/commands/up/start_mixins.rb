@@ -8,7 +8,6 @@ module VagrantPlugins
       # @param [Hash] options
       def build_start_options(parser, options)
         # Setup the defaults
-        options[:provision_enabled] = true
         options[:provision_types] = nil
 
         # Add the options
@@ -19,6 +18,18 @@ module VagrantPlugins
         parser.on("--provision-with x,y,z", Array,
                 "Enable only certain provisioners, by type.") do |list|
           options[:provision_types] = list.map { |type| type.to_sym }
+        end
+      end
+
+      # This validates the provisioner flags and raises an exception
+      # if there are invalid ones.
+      def validate_provisioner_flags!(options)
+        (options[:provision_types] || []).each do |type|
+            klass = Vagrant.plugin("2").manager.provisioners[type]
+            if !klass
+              raise Vagrant::Errors::ProvisionerFlagInvalid,
+                name: type.to_s
+            end
         end
       end
     end

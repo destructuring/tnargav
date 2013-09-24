@@ -9,22 +9,20 @@ module VagrantPlugins
       attr_accessor :forward_x11
       attr_accessor :guest_port
       attr_accessor :keep_alive
-      attr_accessor :max_tries
       attr_accessor :shell
-      attr_accessor :timeout
+      attr_accessor :proxy_command
 
       attr_reader :default
 
       def initialize
         super
 
-        @forward_agent    = UNSET_VALUE
-        @forward_x11      = UNSET_VALUE
-        @guest_port = UNSET_VALUE
-        @keep_alive = UNSET_VALUE
-        @max_tries  = UNSET_VALUE
-        @shell      = UNSET_VALUE
-        @timeout    = UNSET_VALUE
+        @forward_agent = UNSET_VALUE
+        @forward_x11   = UNSET_VALUE
+        @guest_port    = UNSET_VALUE
+        @keep_alive    = UNSET_VALUE
+        @proxy_command = UNSET_VALUE
+        @shell         = UNSET_VALUE
 
         @default    = SSHConnectConfig.new
       end
@@ -43,9 +41,8 @@ module VagrantPlugins
         @forward_x11   = false if @forward_x11 == UNSET_VALUE
         @guest_port = nil if @guest_port == UNSET_VALUE
         @keep_alive = false if @keep_alive == UNSET_VALUE
-        @max_tries  = nil if @max_tries == UNSET_VALUE
+        @proxy_command = nil if @proxy_command == UNSET_VALUE
         @shell      = nil if @shell == UNSET_VALUE
-        @timeout    = nil if @timeout == UNSET_VALUE
 
         @default.finalize!
       end
@@ -56,11 +53,6 @@ module VagrantPlugins
 
       def validate(machine)
         errors = super
-
-        [:max_tries, :timeout].each do |field|
-          value = instance_variable_get("@#{field}".to_sym)
-          errors << I18n.t("vagrant.config.common.error_empty", :field => field) if !value
-        end
 
         # Return the errors
         result = { to_s => errors }

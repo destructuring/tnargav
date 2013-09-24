@@ -202,6 +202,10 @@ module VagrantPlugins
           nil
         end
 
+        def max_network_adapters
+          36
+        end
+
         def read_forwarded_ports(uuid=nil, active_only=false)
           uuid ||= @uuid
 
@@ -324,6 +328,19 @@ module VagrantPlugins
           end
 
           nil
+        end
+
+        def read_mac_addresses
+          macs = {}
+          info = execute("showvminfo", @uuid, "--machinereadable", :retryable => true)
+          info.split("\n").each do |line|
+            if matcher = /^macaddress(\d+)="(.+?)"$/.match(line)
+              adapter = matcher[1].to_i
+              mac = matcher[2].to_s
+              macs[adapter] = mac
+            end
+          end
+          macs
         end
 
         def read_machine_folder

@@ -11,19 +11,21 @@ module VagrantPlugins
         attr_accessor :nfs
         attr_accessor :encrypted_data_bag_secret_key_path
         attr_accessor :encrypted_data_bag_secret
+        attr_accessor :environments_path
+        attr_accessor :environment
 
         def initialize
           super
 
           @cookbooks_path            = UNSET_VALUE
           @data_bags_path            = UNSET_VALUE
+          @environments_path         = UNSET_VALUE
+          @environment               = UNSET_VALUE
           @recipe_url                = UNSET_VALUE
           @roles_path                = UNSET_VALUE
+          @nfs                       = UNSET_VALUE
           @encrypted_data_bag_secret = UNSET_VALUE
           @encrypted_data_bag_secret_key_path = UNSET_VALUE
-          @nfs                       = UNSET_VALUE
-
-          @__defaulted_cookbooks_path = false
         end
 
         #------------------------------------------------------------
@@ -34,34 +36,39 @@ module VagrantPlugins
           super
 
           @recipe_url = nil if @recipe_url == UNSET_VALUE
+          @environment = nil if @environment == UNSET_VALUE
 
           if @cookbooks_path == UNSET_VALUE
             @cookbooks_path = []
             @cookbooks_path << [:host, "cookbooks"] if !@recipe_url
             @cookbooks_path << [:vm, "cookbooks"]
-            @__defaulted_cookbooks_path = true
           end
 
-          @data_bags_path = [] if @data_bags_path == UNSET_VALUE
-          @roles_path     = [] if @roles_path == UNSET_VALUE
+          @data_bags_path    = [] if @data_bags_path == UNSET_VALUE
+          @roles_path        = [] if @roles_path == UNSET_VALUE
+          @environments_path = [] if @environments_path == UNSET_VALUE
+          @environments_path = [@environments_path].flatten
 
           # Make sure the path is an array.
-          @cookbooks_path = prepare_folders_config(@cookbooks_path)
-          @data_bags_path = prepare_folders_config(@data_bags_path)
-          @roles_path     = prepare_folders_config(@roles_path)
+          @cookbooks_path    = prepare_folders_config(@cookbooks_path)
+          @data_bags_path    = prepare_folders_config(@data_bags_path)
+          @roles_path        = prepare_folders_config(@roles_path)
+          @environments_path = prepare_folders_config(@environments_path)
 
+          @nfs = false if @nfs == UNSET_VALUE
           @encrypted_data_bag_secret = "/tmp/encrypted_data_bag_secret" if \
             @encrypted_data_bag_secret == UNSET_VALUE
           @encrypted_data_bag_secret_key_path = nil if \
             @encrypted_data_bag_secret_key_path == UNSET_VALUE
-          @nfs = false if @nfs == UNSET_VALUE
         end
 
         def validate(machine)
           errors = _detected_errors
+          errors.concat(validate_base(machine))
           errors << I18n.t("vagrant.config.chef.cookbooks_path_empty") if \
             !cookbooks_path || [cookbooks_path].flatten.empty?
-
+          errors << I18n.t("vagrant.config.chef.environment_path_required") if \
+            environment && environments_path.empty?
           { "chef solo provisioner" => errors }
         end
 

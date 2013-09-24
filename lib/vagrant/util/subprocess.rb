@@ -26,8 +26,8 @@ module Vagrant
 
       def initialize(*command)
         @options = command.last.is_a?(Hash) ? command.pop : {}
-        @command = command
-        @command[0] = Which.which(@command[0]) if !File.file? @command[0]
+        @command = command.dup
+        @command[0] = Which.which(@command[0]) if !File.file?(@command[0])
         if !@command[0]
           raise Errors::CommandUnavailableWindows, file: command[0] if Platform.windows?
           raise Errors::CommandUnavailable, file: command[0]
@@ -72,6 +72,20 @@ module Vagrant
         process.io.stdout = stdout_writer
         process.io.stderr = stderr_writer
         process.duplex = true
+
+        # If we're in the installer and the command is NOT included
+        # in the installer (external), then remove the DYLD_IMPORT_PATH
+        # environmental variable to run into linker issues. [GH-2219]
+        if Vagrant.in_installer? && ENV["VAGRANT_ORIGINAL_DYLD_LIBRARY_PATH"]
+          installer_dir = ENV["VAGRANT_INSTALLER_EMBEDDED_DIR"].to_s.downcase
+          if !@command[0].downcase.include?(installer_dir)
+            @logger.info("Command not in the installer. Removing DYLD_LIBRARY_PATH")
+            process.environment["DYLD_LIBRARY_PATH"] =
+              ENV["VAGRANT_ORIGINAL_DYLD_LIBRARY_PATH"]
+          else
+            @logger.debug("Command in installer, not touching env vars.")
+          end
+        end
 
         # Set the environment on the process if we must
         if @options[:env]

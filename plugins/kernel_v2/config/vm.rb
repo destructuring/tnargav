@@ -4,6 +4,7 @@ require "set"
 
 require "vagrant"
 require "vagrant/config/v2/util"
+require "vagrant/util/platform"
 
 require File.expand_path("../vm_provisioner", __FILE__)
 require File.expand_path("../vm_subvm", __FILE__)
@@ -14,18 +15,20 @@ module VagrantPlugins
       DEFAULT_VM_NAME = :default
 
       attr_accessor :base_mac
+      attr_accessor :boot_timeout
       attr_accessor :box
       attr_accessor :box_url
-      attr_accessor :graceful_halt_retry_count
-      attr_accessor :graceful_halt_retry_interval
+      attr_accessor :box_download_insecure
+      attr_accessor :graceful_halt_timeout
       attr_accessor :guest
       attr_accessor :hostname
       attr_accessor :usable_port_range
       attr_reader :provisioners
 
       def initialize
-        @graceful_halt_retry_count    = UNSET_VALUE
-        @graceful_halt_retry_interval = UNSET_VALUE
+        @boot_timeout                 = UNSET_VALUE
+        @box_download_insecure        = UNSET_VALUE
+        @graceful_halt_timeout        = UNSET_VALUE
         @guest                        = UNSET_VALUE
         @hostname                     = UNSET_VALUE
         @provisioners                 = []
@@ -39,6 +42,12 @@ module VagrantPlugins
         @__providers                   = {}
         @__provider_overrides          = {}
         @__synced_folders              = {}
+      end
+
+      # This was from V1, but we just kept it here as an alias for hostname
+      # because too many people mess this up.
+      def host_name=(value)
+        @hostname = value
       end
 
       # Custom merge method since some keys here are merged differently.
@@ -91,7 +100,11 @@ module VagrantPlugins
 
           # Merge synced folders.
           other_folders = other.instance_variable_get(:@__synced_folders)
-          new_folders = @__synced_folders.dup
+          new_folders = {}
+          @__synced_folders.each do |key, value|
+            new_folders[key] = value.dup
+          end
+
           other_folders.each do |id, options|
             new_folders[id] ||= {}
             new_folders[id].merge!(options)
@@ -118,7 +131,14 @@ module VagrantPlugins
       #   folder.
       # @param [Hash] options Additional options.
       def synced_folder(hostpath, guestpath, options=nil)
+        if Vagrant::Util::Platform.windows?
+          # On Windows, Ruby just uses normal '/' for path seps, so
+          # just replace normal Windows style seps with Unix ones.
+          hostpath = hostpath.to_s.gsub("\\", "/")
+        end
+
         options ||= {}
+        options = options.dup
         options[:guestpath] = guestpath.to_s.gsub(/\/$/, '')
         options[:hostpath]  = hostpath
 
@@ -143,6 +163,8 @@ module VagrantPlugins
       # @param [Hash] options Options for the network.
       def network(type, options=nil)
         options ||= {}
+        options = options.dup
+        options[:protocol] ||= "tcp"
 
         if !options[:id]
           default_id = nil
@@ -150,7 +172,7 @@ module VagrantPlugins
           if type == :forwarded_port
             # For forwarded ports, set the default ID to the
             # host port so that host ports overwrite each other.
-            default_id = options[:host]
+            default_id = "#{options[:protocol]}#{options[:host]}"
           end
 
           options[:id] = default_id || SecureRandom.uuid
@@ -205,6 +227,7 @@ module VagrantPlugins
       def define(name, options=nil, &block)
         name = name.to_sym
         options ||= {}
+        options = options.dup
         options[:config_version] ||= "2"
 
         # Add the name to the array of VM keys. This array is used to
@@ -226,8 +249,12 @@ module VagrantPlugins
 
       def finalize!
         # Defaults
+        @boot_timeout = 300 if @boot_timeout == UNSET_VALUE
+        @box_download_insecure = false if @box_download_insecure == UNSET_VALUE
+        @graceful_halt_timeout = 300 if @graceful_halt_timeout == UNSET_VALUE
         @guest = nil if @guest == UNSET_VALUE
         @hostname = nil if @hostname == UNSET_VALUE
+        @hostname = @hostname.to_s if @hostname
 
         # Set the guest properly
         @guest = @guest.to_sym if @guest
@@ -235,6 +262,14 @@ module VagrantPlugins
         # If we haven't defined a single VM, then we need to define a
         # default VM which just inherits the rest of the configuration.
         define(DEFAULT_VM_NAME) if defined_vm_keys.empty?
+
+        # Clean up some network configurations
+        @__networks.each do |type, opts|
+          if type == :forwarded_port
+            opts[:guest] = opts[:guest].to_i if opts[:guest]
+            opts[:host] = opts[:host].to_i if opts[:host]
+          end
+        end
 
         # Compile all the provider configurations
         @__providers.each do |name, blocks|
@@ -256,6 +291,13 @@ module VagrantPlugins
 
           # Store it for retrieval later
           @__compiled_provider_configs[name]   = config
+        end
+
+        @__synced_folders.each do |id, options|
+          # Ignore NFS on Windows
+          if options[:nfs] && Vagrant::Util::Platform.windows?
+            options[:nfs] = false
+          end
         end
 
         # Flag that we finalized
@@ -322,7 +364,7 @@ module VagrantPlugins
           guestpath = Pathname.new(options[:guestpath])
           hostpath  = Pathname.new(options[:hostpath]).expand_path(machine.env.root_path)
 
-          if guestpath.relative?
+          if guestpath.relative? && guestpath.to_s !~ /^\w+:/
             errors << I18n.t("vagrant.config.vm.shared_folder_guestpath_relative",
                              :path => options[:guestpath])
           else
@@ -348,6 +390,15 @@ module VagrantPlugins
                                :path => options[:hostpath])
             end
           end
+
+          if options[:mount_options] && !options[:mount_options].is_a?(Array)
+            errors << I18n.t("vagrant.config.vm.shared_folder_mount_options_array")
+          end
+
+          # One day remove this probably.
+          if options[:extra]
+            errors << "The 'extra' flag on synced folders is now 'mount_options'"
+          end
         end
 
         if has_nfs
@@ -361,7 +412,7 @@ module VagrantPlugins
 
         # Validate networks
         has_fp_port_error = false
-        fp_host_ports     = Set.new
+        fp_used = Set.new
         valid_network_types = [:forwarded_port, :private_network, :public_network]
 
         networks.each do |type, options|
@@ -377,12 +428,14 @@ module VagrantPlugins
             end
 
             if options[:host]
-              if fp_host_ports.include?(options[:host])
+              key = "#{options[:protocol]}#{options[:host]}"
+              if fp_used.include?(key)
                 errors << I18n.t("vagrant.config.vm.network_fp_host_not_unique",
-                                :host => options[:host].to_s)
+                                :host => options[:host].to_s,
+                                :protocol => options[:protocol].to_s)
               end
 
-              fp_host_ports.add(options[:host])
+              fp_used.add(key)
             end
           end
 
@@ -391,6 +444,10 @@ module VagrantPlugins
               if !options[:ip]
                 errors << I18n.t("vagrant.config.vm.network_ip_required")
               end
+            end
+
+            if options[:ip] && options[:ip].end_with?(".1")
+              errors << I18n.t("vagrant.config.vm.network_ip_ends_in_one")
             end
           end
         end

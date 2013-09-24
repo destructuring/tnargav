@@ -1,5 +1,7 @@
 require "thread"
 
+require "log4r"
+
 module Vagrant
   module Action
     module Builtin
@@ -13,9 +15,16 @@ module Vagrant
 
         def initialize(app, env)
           @app = app
+          @logger = Log4r::Logger.new("vagrant::action::builtin::handle_box_url")
         end
 
         def call(env)
+          if !env[:machine].config.vm.box || !env[:machine].config.vm.box_url
+            @logger.info("Skipping HandleBoxUrl because box or box_url not set.")
+            @app.call(env)
+            return
+          end
+
           if !env[:machine].box
             # Get a "big lock" to make sure that our more fine grained
             # lock access is thread safe.
@@ -29,18 +38,17 @@ module Vagrant
             # raise a terrible runtime error.
             box_name = env[:machine].config.vm.box
             box_url  = env[:machine].config.vm.box_url
+            box_download_insecure = env[:machine].config.vm.box_download_insecure
 
             lock.synchronize do
               # First see if we actually have the box now.
               has_box = false
 
-              formats = env[:machine].provider_options[:box_format] ||
+              box_formats = env[:machine].provider_options[:box_format] ||
                 env[:machine].provider_name
-              [formats].flatten.each do |format|
-                if env[:box_collection].find(box_name, format)
-                  has_box = true
-                  break
-                end
+              if env[:box_collection].find(box_name, box_formats)
+                has_box = true
+                break
               end
 
               if !has_box
@@ -53,8 +61,9 @@ module Vagrant
 
                 begin
                   env[:action_runner].run(Vagrant::Action.action_box_add, {
+                    :box_download_insecure => box_download_insecure,
                     :box_name     => box_name,
-                    :box_provider => env[:machine].provider_name,
+                    :box_provider => box_formats,
                     :box_url      => box_url
                   })
                 rescue Errors::BoxAlreadyExists

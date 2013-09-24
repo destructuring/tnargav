@@ -11,13 +11,20 @@ module VagrantPlugins
 
       def execute
         options = {}
+        options[:destroy_on_error] = true
         options[:parallel] = true
+        options[:provision_ignore_sentinel] = false
 
         opts = OptionParser.new do |o|
           o.banner = "Usage: vagrant up [vm-name] [options] [-h]"
           o.separator ""
 
           build_start_options(o, options)
+
+          o.on("--[no-]destroy-on-error",
+               "Destroy machine if any fatal error happens (default to true).") do |destroy|
+            options[:destroy_on_error] = destroy
+          end
 
           o.on("--[no-]parallel",
                "Enable or disable parallelism if provider supports it.") do |parallel|
@@ -33,6 +40,9 @@ module VagrantPlugins
         # Parse the options
         argv = parse_options(opts)
         return if !argv
+
+        # Validate the provisioners
+        validate_provisioner_flags!(options)
 
         # Go over each VM and bring it up
         @logger.debug("'Up' each target VM...")

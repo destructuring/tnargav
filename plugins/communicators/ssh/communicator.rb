@@ -5,6 +5,7 @@ require 'timeout'
 
 require 'log4r'
 require 'net/ssh'
+require 'net/ssh/proxy/command'
 require 'net/scp'
 
 require 'vagrant/util/ansi_escape_code_remover'
@@ -57,8 +58,18 @@ module VagrantPlugins
         }.merge(opts || {})
 
         # Connect via SSH and execute the command in the shell.
+        stdout = ""
+        stderr = ""
         exit_status = connect do |connection|
-          shell_execute(connection, command, opts[:sudo], &block)
+          shell_execute(connection, command, opts[:sudo]) do |type, data|
+            if type == :stdout
+              stdout += data
+            elsif type == :stderr
+              stderr += data
+            end
+
+            block.call(type, data) if block
+          end
         end
 
         # Check for any errors
@@ -66,7 +77,11 @@ module VagrantPlugins
           # The error classes expect the translation key to be _key,
           # but that makes for an ugly configuration parameter, so we
           # set it here from `error_key`
-          error_opts = opts.merge(:_key => opts[:error_key])
+          error_opts = opts.merge(
+            :_key => opts[:error_key],
+            :stdout => stdout,
+            :stderr => stderr
+          )
           raise opts[:error_class], error_opts
         end
 
@@ -172,15 +187,16 @@ module VagrantPlugins
             Errno::EADDRINUSE,
             Errno::ECONNREFUSED,
             Errno::ECONNRESET,
+            Errno::ENETUNREACH,
             Errno::EHOSTUNREACH,
             Net::SSH::Disconnect,
             Timeout::Error
           ]
 
-          retries = @machine.config.ssh.max_tries
-          timeout = @machine.config.ssh.timeout
+          retries = 5
+          timeout = 60
 
-          @logger.info("Attempting SSH. Retries: #{retries}. Timeout: #{timeout}")
+          @logger.info("Attempting SSH connnection...")
           connection = retryable(:tries => retries, :on => exceptions) do
             Timeout.timeout(timeout) do
               begin
@@ -191,8 +207,13 @@ module VagrantPlugins
                 # Setup logging for connections
                 connect_opts = opts.merge({
                   :logger  => ssh_logger,
+                  :timeout => 15,
                   :verbose => :debug
                 })
+
+                if ssh_info[:proxy_command]
+                  connect_opts[:proxy] = Net::SSH::Proxy::Command.new(ssh_info[:proxy_command])
+                end
 
                 @logger.info("Attempting to connect to SSH...")
                 @logger.info("  - Host: #{ssh_info[:host]}")
@@ -282,10 +303,39 @@ module VagrantPlugins
             ch2.on_request("exit-status") do |ch3, data|
               exit_status = data.read_long
               @logger.debug("Exit status: #{exit_status}")
+
+              # Close the channel, since after the exit status we're
+              # probably done. This fixes up issues with hanging.
+              channel.close
             end
 
             # Set the terminal
             ch2.send_data "export TERM=vt100\n"
+
+            # Set SSH_AUTH_SOCK if we are in sudo and forwarding agent.
+            # This is to work around often misconfigured boxes where
+            # the SSH_AUTH_SOCK env var is not preserved.
+            if @machine.ssh_info[:forward_agent] && sudo
+              auth_socket = ""
+              execute("echo; printf $SSH_AUTH_SOCK") do |type, data|
+                if type == :stdout
+                  auth_socket += data
+                end
+              end
+
+              if auth_socket != ""
+                # Make sure we only read the last line which should be
+                # the $SSH_AUTH_SOCK env var we printed.
+                auth_socket = auth_socket.split("\n").last.chomp
+              end
+
+              if auth_socket == ""
+                @logger.warn("No SSH_AUTH_SOCK found despite forward_agent being set.")
+              else
+                @logger.info("Setting SSH_AUTH_SOCK remotely: #{auth_socket}")
+                ch2.send_data "export SSH_AUTH_SOCK=#{auth_socket}\n"
+              end
+            end
 
             # Output the command
             ch2.send_data "#{command}\n"
@@ -315,7 +365,12 @@ module VagrantPlugins
           end
 
           # Wait for the channel to complete
-          channel.wait
+          begin
+            channel.wait
+          rescue IOError
+            @logger.info("SSH connection unexpected closed. Assuming reboot or something.")
+            exit_status = 0
+          end
         ensure
           # Kill the keep-alive thread
           keep_alive.kill if keep_alive

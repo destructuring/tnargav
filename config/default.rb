@@ -5,8 +5,6 @@ Vagrant.configure("2") do |config|
   config.ssh.forward_x11 = false
   config.ssh.guest_port = 22
   config.ssh.keep_alive = true
-  config.ssh.max_tries = 100
-  config.ssh.timeout = 30
   config.ssh.shell = "bash -l"
 
   config.ssh.default.username = "vagrant"
@@ -14,8 +12,8 @@ Vagrant.configure("2") do |config|
   config.vm.usable_port_range = (2200..2250)
   config.vm.box_url = nil
   config.vm.base_mac = nil
-  config.vm.graceful_halt_retry_count = 60
-  config.vm.graceful_halt_retry_interval = 1
+  config.vm.boot_timeout = 300
+  config.vm.graceful_halt_timeout = 60
 
   # Share SSH locally by default
   config.vm.network :forwarded_port,

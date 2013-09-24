@@ -202,6 +202,17 @@ module VagrantPlugins
         end
 
         def bridged_network_config(config)
+          if config[:ip]
+            options = {
+                :auto_config => true,
+                :mac         => nil,
+                :netmask     => "255.255.255.0",
+                :type        => :static
+            }.merge(config)
+            options[:type] = options[:type].to_sym
+            return options
+          end
+
           return {
             :type => :dhcp,
             :use_dhcp_assigned_default_route => config[:use_dhcp_assigned_default_route]
@@ -212,6 +223,7 @@ module VagrantPlugins
           options = {
             :auto_config => true,
             :mac         => nil,
+            :nic_type    => nil,
             :netmask     => "255.255.255.0",
             :type        => :static
           }.merge(options)
@@ -220,7 +232,7 @@ module VagrantPlugins
           options[:type] = options[:type].to_sym
 
           # Default IP is in the 20-bit private network block for DHCP based networks
-          options[:ip] = "172.28.128.1" if options[:type] == :dhcp
+          options[:ip] = "172.28.128.1" if options[:type] == :dhcp && !options[:ip]
 
           # Calculate our network address for the given IP/netmask
           netaddr  = network_address(options[:ip], options[:netmask])
@@ -271,7 +283,7 @@ module VagrantPlugins
             :ip          => options[:ip],
             :mac         => options[:mac],
             :netmask     => options[:netmask],
-            :nic_type    => nil,
+            :nic_type    => options[:nic_type],
             :type        => options[:type]
           }.merge(dhcp_options)
         end

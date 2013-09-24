@@ -87,6 +87,10 @@ module Vagrant
       error_key(:active_machine_with_different_provider)
     end
 
+    class AnsibleFailed < VagrantError
+      error_key(:ansible_failed)
+    end
+
     class AnsiblePlaybookAppNotFound < VagrantError
       error_key(:ansible_playbook_app_not_found)
     end
@@ -167,7 +171,7 @@ module Vagrant
       error_key(:command_unavailable)
     end
 
-    class CommandUnavailableWindows < VagrantError
+    class CommandUnavailableWindows < CommandUnavailable
       error_key(:command_unavailable_windows)
     end
 
@@ -181,6 +185,10 @@ module Vagrant
 
     class CopyPrivateKeyFailed < VagrantError
       error_key(:copy_private_key_failed)
+    end
+
+    class DarwinNFSMountFailed < VagrantError
+      error_key(:darwin_nfs_mount_failed)
     end
 
     class DestroyRequiresForce < VagrantError
@@ -327,6 +335,10 @@ module Vagrant
       error_key(:not_found, "vagrant.actions.vm.host_only_network")
     end
 
+    class NFSCantReadExports < VagrantError
+      error_key(:nfs_cant_read_exports)
+    end
+
     class NFSNoGuestIP < VagrantError
       error_key(:nfs_no_guest_ip)
     end
@@ -367,6 +379,10 @@ module Vagrant
       error_key(:provider_not_found)
     end
 
+    class ProvisionerFlagInvalid < VagrantError
+      error_key(:provisioner_flag_invalid)
+    end
+
     class PluginGemError < VagrantError
       error_key(:plugin_gem_error)
     end
@@ -397,6 +413,10 @@ module Vagrant
 
     class PluginNotFound < VagrantError
       error_key(:plugin_not_found)
+    end
+
+    class PluginNotInstalled < VagrantError
+      error_key(:plugin_not_installed)
     end
 
     class SCPPermissionDenied < VagrantError
@@ -507,6 +527,10 @@ module Vagrant
       error_key(:vboxmanage_not_found_error)
     end
 
+    class VirtualBoxBrokenVersion040214 < VagrantError
+      error_key(:virtualbox_broken_version_040214)
+    end
+
     class VirtualBoxInvalidVersion < VagrantError
       error_key(:virtualbox_invalid_version)
     end
@@ -529,6 +553,14 @@ module Vagrant
 
     class VMBaseMacNotSpecified < VagrantError
       error_key(:no_base_mac, "vagrant.actions.vm.match_mac")
+    end
+
+    class VMBootBadState < VagrantError
+      error_key(:boot_bad_state)
+    end
+
+    class VMBootTimeout < VagrantError
+      error_key(:boot_timeout)
     end
 
     class VMCustomizationFailed < VagrantError

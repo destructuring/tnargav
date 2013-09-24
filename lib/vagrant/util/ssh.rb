@@ -100,6 +100,7 @@ module Vagrant
         # Command line options
         command_options = [
           "-p", options[:port].to_s,
+          "-o", "DSAAuthentication=yes",
           "-o", "LogLevel=FATAL",
           "-o", "StrictHostKeyChecking=no",
           "-o", "UserKnownHostsFile=/dev/null"]
@@ -119,6 +120,10 @@ module Vagrant
           command_options += [
             "-o", "ForwardX11=yes",
             "-o", "ForwardX11Trusted=yes"]
+        end
+
+        if ssh_info[:proxy_command]
+          command_options += ["-o", "ProxyCommand=#{ssh_info[:proxy_command]}"]
         end
 
         # Configurables -- extra_args should always be last due to the way the

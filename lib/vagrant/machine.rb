@@ -108,7 +108,7 @@ module Vagrant
         # Read the id file from the data directory if it exists as the
         # ID for the pre-existing physical representation of this machine.
         id_file = @data_dir.join("id")
-        @id = id_file.read if id_file.file?
+        @id = id_file.read.chomp if id_file.file?
       end
 
       # Initializes the provider last so that it has access to all the
@@ -207,6 +207,16 @@ module Vagrant
       else
         # Delete the file, since the machine is now destroyed
         id_file.delete if id_file.file?
+
+        # Delete the entire data directory contents since all state
+        # associated with the VM is now gone.
+        @data_dir.children.each do |child|
+          begin
+            child.rmtree
+          rescue Errno::EACCES
+            @logger.info("EACCESS deleting file: #{child}")
+          end
+        end
       end
 
       # Store the ID locally
@@ -275,6 +285,9 @@ module Vagrant
       info[:forward_agent] = @config.ssh.forward_agent
       info[:forward_x11]   = @config.ssh.forward_x11
 
+      # Add in provided proxy command config
+      info[:proxy_command] = @config.ssh.proxy_command if @config.ssh.proxy_command
+
       # Set the private key path. If a specific private key is given in
       # the Vagrantfile we set that. Otherwise, we use the default (insecure)
       # private key, but only if the provider didn't give us one.
@@ -301,27 +314,6 @@ module Vagrant
       result = @provider.state
       raise Errors::MachineStateInvalid if !result.is_a?(MachineState)
       result
-    end
-
-    protected
-
-    # Given a guest name (such as `:windows`), this will load the associated
-    # guest implementation and return an instance.
-    #
-    # @param [Symbol] guest The name of the guest implementation.
-    # @return [Object]
-    def load_guest(guest)
-      @logger.info("Loading guest: #{guest}")
-
-      klass = Vagrant.plugin("2").manager.guests[guest]
-
-      if klass.nil?
-        raise Errors::VMGuestError,
-          :_key  => :unknown_type,
-          :guest => guest.to_s
-      end
-
-      return klass.new(self)
     end
   end
 end

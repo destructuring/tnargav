@@ -1,5 +1,9 @@
 en:
   vagrant:
+    boot_completed: |-
+      Machine booted and ready!
+    boot_waiting: |-
+      Waiting for machine to boot. This may take a few minutes...
     cfengine_bootstrapping: |-
       Bootstrapping CFEngine with policy server: %{policy_server}...
     cfengine_bootstrapping_policy_hub: |-
@@ -25,8 +29,21 @@ en:
       CFEngine running in "single run" mode. Will execute one file.
     cfengine_single_run_execute: |-
       Executing run file for CFEngine...
+    chef_client_cleanup_failed: |-
+      Cleaning up the '%{deletable}' for Chef failed. The stdout and
+      stderr are shown below. Vagrant will continue destroying the machine,
+      so please clean up these resources manually.
+
+      stdout: %{stdout}
+
+      stderr: %{stderr}
+    chef_config_knife_not_found: |-
+      The `knife` application was not found! This is required by Vagrant
+      to automatically delete Chef nodes and clients.
     chef_run_list_empty: |-
       Warning: Chef solo run list is empty. This may not be what you want.
+    provisioner_cleanup: |-
+      Running cleanup tasks for '%{name}' provisioner...
 
     cfengine_config:
       classes_array: |-
@@ -40,6 +57,14 @@ en:
       run_file_not_found: |-
         The 'run_file' specified could not be found.
 
+    virtualbox:
+      config:
+        id_in_pre_import: |-
+          The ':id' parameter is not available in "pre-import" customizations.
+        invalid_event: |-
+          %{event} is not a valid event for customization. Valid events
+          are: %{valid_events}
+
     general:
       batch_unexpected_error: |-
         An unexpected error ocurred when executing the action on the
@@ -52,7 +77,9 @@ en:
 
         %{message}
       config_upgrade_messages: |-
-        There were warnings and/or errors while loading your Vagrantfile.
+        There were warnings and/or errors while loading your Vagrantfile
+        for the machine '%{name}'.
+
         Your Vagrantfile was written for an earlier version of Vagrant,
         and while Vagrant does the best it can to remain backwards
         compatible, there are some cases where things have changed
@@ -106,6 +133,9 @@ en:
         Machine name: %{name}
         Active provider: %{active_provider}
         Requested provider: %{requested_provider}
+      ansible_failed: |-
+        Ansible failed to complete successfully. Any error output should be
+        visible above. Please fix these errors and try again.
       ansible_playbook_app_not_found: |-
         The "ansible-playbook" program could not be found! Please verify
         that "ansible-playbook" is available on the PATH of your host
@@ -120,6 +150,31 @@ en:
         Any errors that occurred are shown below.
 
         %{message}
+      boot_bad_state: |-
+        The guest machine entered an invalid state while waiting for it
+        to boot. Valid states are '%{valid}'. The machine is in the
+        '%{invalid}' state. Please verify everything is configured
+        properly and try again.
+
+        If the provider you're using has a GUI that comes with it,
+        it is often helpful to open that and watch the machine, since the
+        GUI often has more helpful error messages than Vagrant can retrieve.
+        For example, if you're using VirtualBox, run `vagrant up` while the
+        VirtualBox GUI is open.
+      boot_timeout: |-
+        Timed out while waiting for the machine to boot. This means that
+        Vagrant was unable to communicate with the guest machine within
+        the configured ("config.vm.boot_timeout" value) time period. This can
+        mean a number of things.
+
+        If you're using a custom box, make sure that networking is properly
+        working and you're able to connect to the machine. It is a common
+        problem that networking isn't setup properly in these boxes.
+        Verify that authentication configurations are also setup properly,
+        as well.
+
+        If the box appears to be booting properly, you may want to increase
+        the timeout ("config.vm.boot_timeout") value.
       box_config_changing_box: |-
         While loading the Vagrantfile, the provider override specified
         a new box. This box, in turn, specified a different box. This isn't
@@ -134,7 +189,7 @@ en:
         box file format can be found at the URL below:
 
         http://docs.vagrantup.com/v2/boxes/format.html
-      box_not_found: Box '%{name}' could not be found.
+      box_not_found: Box '%{name}' with '%{provider}' provider could not be found.
       box_provider_doesnt_match: |-
         The box you attempted to add doesn't match the provider you specified.
 
@@ -168,11 +223,11 @@ en:
 
         %{help}
       command_unavailable: |-
-        The executable '%(file)' Vagrant is trying to run was not
+        The executable '%{file}' Vagrant is trying to run was not
         found in the PATH variable. This is an error. Please verify
         this software is installed and on the path.
       command_unavailable_windows: |-
-        The executable '%(file)' Vagrant is trying to run was not
+        The executable '%{file}' Vagrant is trying to run was not
         found in the %PATH% variable. This is an error. Please verify
         this software is installed and on the path.
       config_invalid: |-
@@ -233,6 +288,11 @@ en:
         may run at any given time to avoid problems with VirtualBox inconsistencies
         occurring. Please wait for the other instance of Vagrant to end and then
         try again.
+      environment_non_existent_cwd: |-
+        The working directory for Vagrant doesn't exist! This is the
+        specified working directory:
+
+        %{cwd}
       forward_port_adapter_not_found: |-
         The adapter to attach a forwarded port to was not found. Please
         verify that the given adapter is setup on the machine as a NAT
@@ -313,6 +373,10 @@ en:
         A multi-vm environment is required for name specification to this command.
       multi_vm_target_required: |-
         This command requires a specific VM name to target in a multi-VM environment.
+      nfs_cant_read_exports: |-
+        Vagrant can't read your current NFS exports! The exports file should be
+        readable by any user. This is usually caused by invalid permissions
+        on your NFS exports file. Please fix them and try again.
       nfs_no_guest_ip: |-
         No guest IP was given to the Vagrant core NFS helper. This is an
         internal error that should be reported as a bug.
@@ -361,6 +425,8 @@ en:
       plugin_not_found: |-
         The plugin '%{name}' could not be found. Please install this plugin
         prior to attempting to do anything with it.
+      plugin_not_installed: |-
+        The plugin '%{name}' is not installed. Please install it first.
       port_collision_resume: |-
         This VM cannot be resumed, because the forwarded ports would collide
         with a running program (it could be another virtual machine). Normally,
@@ -370,6 +436,9 @@ en:
       provider_not_found: |-
         The provider '%{provider}' could not be found, but was requested to
         back the machine '%{machine}'. Please use a provider that exists.
+      provisioner_flag_invalid: |-
+        '%{name}' is not a known provisioner. Please specify a valid
+        provisioner.
       scp_permission_denied: |-
         Failed to upload a file to the guest VM via SCP due to a permissions
         error. This is normally because the user running Vagrant doesn't have
@@ -397,6 +466,14 @@ en:
         Vagrant assumes that this means the command failed!
 
         %{command}
+
+        Stdout from the command:
+
+        %{stdout}
+
+        Stderr from the command:
+
+        %{stderr}
       ssh_connect_eacces: |-
         SSH is getting permission denied errors when attempting to connect
         to the IP for SSH. This is usually caused by network rules and not being
@@ -532,6 +609,11 @@ en:
         be found. Please verify VirtualBox is properly installed. You can verify
         everything is okay by running "VBoxManage --version" and verifying
         that the VirtualBox version is outputted.
+      virtualbox_broken_version_040214: |-
+        Vagrant detected you have VirtualBox 4.2.14 installed. VirtualBox
+        4.2.14 contains a critical bug that causes it to not work with
+        Vagrant. VirtualBox 4.2.16+ fixes this problem. Please upgrade
+        VirtualBox.
       virtualbox_invalid_version: |-
         Vagrant has detected that you have a version of VirtualBox installed
         that is not supported. Please install one of the supported versions
@@ -582,12 +664,15 @@ en:
 #-------------------------------------------------------------------------------
     config:
       common:
-        bad_field: "The following settings don't exist: %{fields}"
+        bad_field: "The following settings shouldn't exist: %{fields}"
         error_empty: "`%{field}` must be not be empty."
       chef:
         cookbooks_path_empty: "Must specify a cookbooks path for chef solo."
+        environment_path_required: "When 'environment' is specified, you must provide 'environments_path'."
         cookbooks_path_missing: |-
           Cookbook path doesn't exist: %{path}
+        custom_config_path_missing: |-
+          Path specified for "custom_config_path" does not exist.
         server_url_empty: "Chef server URL must be populated."
         validation_key_path: "Validation key path must be valid path to your chef server validation key."
       loader:
@@ -623,10 +708,14 @@ en:
         nfs_requires_host: |-
           Using NFS shared folders requires a host to be specified
           using `config.vagrant.host`.
+        network_ip_ends_in_one: |-
+          Static IPs cannot end in ".1" since that address is always
+          reserved for the router. Please use another ending.
         network_ip_required: |-
           An IP is required for a private network.
         network_fp_host_not_unique: |-
           Forwarded port '%{host}' (host port) is declared multiple times
+          with the protocol '%{protocol}'.
         network_fp_requires_ports: |-
           Forwarded port definitions require a "host" and "guest" value
         network_type_invalid: |-
@@ -643,6 +732,9 @@ en:
         shared_folder_nfs_owner_group: |-
           Shared folder that have NFS enabled do no support owner/group
           attributes. Host path: %{path}
+        shared_folder_mount_options_array: |-
+          Shared folder mount options specified by 'mount_options' must
+          be an array of options.
 
 #-------------------------------------------------------------------------------
 # Translations for commands. e.g. `vagrant x`
@@ -652,8 +744,19 @@ en:
         vm_already_running: |-
           VirtualBox VM is already running.
         vm_not_created: "VM not created. Moving on..."
-        vm_not_running: "VM is not currently running. Please bring it up to run this command."
+        vm_not_running: "VM is not currently running. Please, first bring it up with `vagrant up` then run this command."
       box:
+        remove_must_specify_provider: |-
+          Multiple providers were found for the box '%{name}'. Please specify
+          the specific provider for the box you want to remove. The list of
+          providers backing this box is:
+
+          '%{providers}'
+
+          To remove the box for a specific provider, run the following command,
+          filling in PROVIDER with one of the providers above:
+
+          vagrant box remove '%{name}' PROVIDER
         no_installed_boxes: "There are no installed boxes! Use `vagrant box add` to add some."
         removing: |-
           Removing box '%{name}' with provider '%{provider}'...
@@ -681,6 +784,10 @@ en:
           Installing the '%{name}' plugin. This can take a few minutes...
         uninstalling: |-
           Uninstalling the '%{name}' plugin...
+        post_install: |-
+          Post install message from the '%{name}' plugin:
+
+          %{message}
       status:
         aborted: |-
           The VM is in an aborted state. This means that it was abruptly
@@ -751,9 +858,6 @@ en:
       vm:
         boot:
           booting: Booting VM...
-          waiting: Waiting for VM to boot. This can take a few minutes.
-          ready: VM booted and ready for use!
-          failed: Failed to connect to VM!
           failed_to_boot: |-
             Failed to connect to VM via SSH. Please verify the VM successfully booted
             by looking at the VirtualBox GUI.
@@ -825,7 +929,7 @@ en:
             %{error}
 
             Please fix this customization and try again.
-          running: Running any VM customizations...
+          running: Running '%{event}' VM customizations...
         destroy:
           destroying: Destroying VM and associated drives...
         destroy_network:
@@ -972,10 +1076,10 @@ en:
 
             %{output}
           already_exists: |-
-            The box you're attempting to add already exits:
+            The box you're attempting to add already exists:
 
             Name: %{name}
-            Provider: %{provider}
+            Provider: %{formats}
         add:
           adding: |-
             Extracting box...
@@ -1094,6 +1198,12 @@ en:
         server_validation_key_doesnt_exist: |-
           The validation key set for `config.chef.validation_key_path` does not exist! This
           file needs to exist so it can be uploaded to the virtual machine.
+        deleting_from_server: "Deleting %{deletable} \"%{name}\" from Chef server..."
+
+      file:
+        no_dest_file: "File destination must be specified."
+        no_source_file: "File source must be specified."
+        path_invalid: "File upload source file %{path} must exist"
 
       puppet:
         not_detected: |-
@@ -1134,5 +1244,5 @@ en:
       ansible:
         no_playbook: "`playbook` must be set for the Ansible provisioner."
         playbook_path_invalid: "`playbook` for the Ansible provisioner does not exist on the host system: %{path}"
-        inventory_file_path_invalid: "`inventory_file` for the Ansible provisioner does not exist on the host system: %{path}"
+        inventory_path_invalid: "`inventory_path` for the Ansible provisioner does not exist on the host system: %{path}"
         extra_vars_not_hash: "`extra_vars` for the Ansible provisioner must be a hash"

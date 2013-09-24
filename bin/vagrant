@@ -40,6 +40,12 @@ elsif !$stdout.tty? && !Vagrant::Util::Platform.cygwin?
     opts[:ui_class] = Vagrant::UI::Basic
 end
 
+# Also allow users to force colors.
+if ARGV.include?("--color")
+  ARGV.delete("--color")
+  opts[:ui_class] = Vagrant::UI::Colored
+end
+
 # Default to colored output
 opts[:ui_class] ||= Vagrant::UI::Colored
 
@@ -52,6 +58,12 @@ ARGV.each do |arg|
     ENV["VAGRANT_NO_PLUGINS"] = "1" if arg == "plugin"
     break
   end
+end
+
+# Fast path the version of Vagrant
+if ARGV.include?("-v") || ARGV.include?("--version")
+  puts "Vagrant #{Vagrant::VERSION}"
+  exit 0
 end
 
 env = nil

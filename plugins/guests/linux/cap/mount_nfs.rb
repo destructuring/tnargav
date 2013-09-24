@@ -16,8 +16,16 @@ module VagrantPlugins
             machine.communicate.sudo("mkdir -p #{expanded_guest_path}")
 
             # Mount
-            mount_command = "mount -o vers=#{opts[:nfs_version]} #{ip}:'#{opts[:hostpath]}' #{expanded_guest_path}"
+            hostpath = opts[:hostpath].dup
+            hostpath.gsub!("'", "'\\\\''")
 
+            # Figure out any options
+            mount_opts = ["vers=#{opts[:nfs_version]}", "udp"]
+            if opts[:mount_options]
+              mount_opts = opts[:mount_options].dup
+            end
+
+            mount_command = "mount -o '#{mount_opts.join(",")}' #{ip}:'#{hostpath}' #{expanded_guest_path}"
             retryable(:on => Vagrant::Errors::LinuxNFSMountFailed, :tries => 5, :sleep => 2) do
               machine.communicate.sudo(mount_command,
                                        :error_class => Vagrant::Errors::LinuxNFSMountFailed)

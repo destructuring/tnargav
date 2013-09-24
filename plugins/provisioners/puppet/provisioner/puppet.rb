@@ -27,17 +27,17 @@ module VagrantPlugins
             @module_paths << [path, File.join(config.temp_dir, "modules-#{i}")]
           end
 
+          folder_opts = {}
+          folder_opts[:nfs] = true if @config.nfs
+          folder_opts[:owner] = "root" if !folder_opts[:nfs]
+
           # Share the manifests directory with the guest
           root_config.vm.synced_folder(
-            @expanded_manifests_path, manifests_guest_path)
+            @expanded_manifests_path, manifests_guest_path, folder_opts)
 
           # Share the module paths
-          count = 0
           @module_paths.each do |from, to|
-            # Sorry for the cryptic key here, but VirtualBox has a strange limit on
-            # maximum size for it and its something small (around 10)
-            root_config.vm.synced_folder(from, to)
-            count += 1
+            root_config.vm.synced_folder(from, to, folder_opts)
           end
         end
 
@@ -97,6 +97,11 @@ module VagrantPlugins
             options << "--hiera_config=#{@hiera_config_path}"
           end
 
+          if !@machine.env.ui.is_a?(Vagrant::UI::Colored)
+            options << "--color=false"
+          end
+
+          options << "--manifestdir #{manifests_guest_path}"
           options << "--detailed-exitcodes"
           options << @manifest_file
           options = options.join(" ")
@@ -121,15 +126,16 @@ module VagrantPlugins
                                       :manifest => config.manifest_file)
 
           @machine.communicate.sudo(command) do |type, data|
-            data.chomp!
-            @machine.env.ui.info(data, :prefix => false) if !data.empty?
+            if !data.empty?
+              @machine.env.ui.info(data, :new_line => false, :prefix => false)
+            end
           end
         end
 
         def verify_shared_folders(folders)
           folders.each do |folder|
             @logger.debug("Checking for shared folder: #{folder}")
-            if !@machine.communicate.test("test -d #{folder}")
+            if !@machine.communicate.test("test -d #{folder}", sudo: true)
               raise PuppetError, :missing_shared_folders
             end
           end
