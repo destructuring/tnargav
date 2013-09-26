@@ -36,7 +36,7 @@ Gem::Specification.new do |s|
   all_files.reject! { |file| [".", ".."].include?(File.basename(file)) }
   all_files     += %w(CHANGELOG.md CONTRIBUTING.md Gemfile LICENSE README.md tnargav.gemspec)
 
-  s.files         = unignored_files
-  s.executables   = unignored_files.map { |f| f[/^bin\/(.*)/, 1] }.compact
+  s.files         = all_files
+  s.executables   = all_files.map { |f| f[/^bin\/(.*)/, 1] }.compact
   s.require_path  = 'lib'
 end
